@@ -33,3 +33,7 @@ jobs:
           path: .
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # Vorgabe sind 10 Minuten. GitHubs Auslieferung hat am 2026-08-06
+          # laenger gebraucht und lief in diesen Timeout, obwohl nichts kaputt war.
+          timeout: 1800000
