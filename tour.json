@@ -1,6 +1,50 @@
 {
   "einheit": "meter",
   "raeume": {
+    "besprechung": {
+      "name": "Besprechung",
+      "mehrereStandpunkte": false,
+      "standpunkte": {
+        "mitte": {
+          "name": "Mitte",
+          "position": [
+            3.6,
+            1.6,
+            3.2
+          ],
+          "nordwinkel": 0,
+          "nachbarn": [
+            "maker__mitte",
+            "vorlesung__hinten"
+          ],
+          "varianten": {
+            "standard": "panoramen/besprechung__mitte__standard.jpg"
+          }
+        }
+      }
+    },
+    "maker": {
+      "name": "Maker-Space",
+      "mehrereStandpunkte": false,
+      "standpunkte": {
+        "mitte": {
+          "name": "Mitte",
+          "position": [
+            -1.3,
+            1.6,
+            3.2
+          ],
+          "nordwinkel": 0,
+          "nachbarn": [
+            "werkstatt__mitte",
+            "besprechung__mitte"
+          ],
+          "varianten": {
+            "standard": "panoramen/maker__mitte__standard.jpg"
+          }
+        }
+      }
+    },
     "vorlesung": {
       "name": "Vorlesungsraum",
       "mehrereStandpunkte": true,
@@ -17,16 +61,34 @@
             "vorlesung__hinten"
           ],
           "varianten": {
-            "v1": "panoramen/vorlesung__vorne__v1.jpg"
+            "v3": "panoramen/vorlesung__vorne__v3.jpg"
+          }
+        }
+      }
+    },
+    "werkstatt": {
+      "name": "Werkstatt",
+      "mehrereStandpunkte": false,
+      "standpunkte": {
+        "mitte": {
+          "name": "Mitte",
+          "position": [
+            -6.4,
+            1.6,
+            3.2
+          ],
+          "nordwinkel": 0,
+          "nachbarn": [
+            "maker__mitte"
+          ],
+          "varianten": {
+            "standard": "panoramen/werkstatt__mitte__standard.jpg"
           }
         }
       }
     }
   },
   "warnungen": [
-    "Noch kein Panorama fuer werkstatt__mitte",
-    "Noch kein Panorama fuer maker__mitte",
-    "Noch kein Panorama fuer besprechung__mitte",
     "Noch kein Panorama fuer vorlesung__hinten"
   ]
 }
