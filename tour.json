@@ -7,11 +7,9 @@
       "standpunkte": {
         "mitte": {
           "name": "Mitte",
-          "position": [
-            3.6,
-            1.6,
-            3.2
-          ],
+          "x": 2.77,
+          "y": 1.86,
+          "hoehe": 1.76,
           "nordwinkel": 0,
           "nachbarn": [
             "maker__mitte",
@@ -29,11 +27,9 @@
       "standpunkte": {
         "mitte": {
           "name": "Mitte",
-          "position": [
-            -1.3,
-            1.6,
-            3.2
-          ],
+          "x": -2.85,
+          "y": 1.75,
+          "hoehe": 1.76,
           "nordwinkel": 0,
           "nachbarn": [
             "werkstatt__mitte",
@@ -49,19 +45,31 @@
       "name": "Vorlesungsraum",
       "mehrereStandpunkte": true,
       "standpunkte": {
-        "vorne": {
-          "name": "Vorne",
-          "position": [
-            15.2,
-            1.6,
-            3.5
-          ],
+        "mitte": {
+          "name": "Mitte",
+          "x": 10.8,
+          "y": 3.75,
+          "hoehe": 1.6,
           "nordwinkel": 0,
           "nachbarn": [
-            "vorlesung__hinten"
+            "vorlesung__hinten",
+            "vorlesung__vorne"
           ],
           "varianten": {
-            "v3": "panoramen/vorlesung__vorne__v3.jpg"
+            "standard": "panoramen/vorlesung__mitte__standard.jpg"
+          }
+        },
+        "vorne": {
+          "name": "Vorne",
+          "x": 16.24,
+          "y": 3.73,
+          "hoehe": 1.6,
+          "nordwinkel": 0,
+          "nachbarn": [
+            "vorlesung__mitte"
+          ],
+          "varianten": {
+            "standard": "panoramen/vorlesung__vorne__standard.jpg"
           }
         }
       }
@@ -72,11 +80,9 @@
       "standpunkte": {
         "mitte": {
           "name": "Mitte",
-          "position": [
-            -6.4,
-            1.6,
-            3.2
-          ],
+          "x": -6.67,
+          "y": 3.14,
+          "hoehe": 1.76,
           "nordwinkel": 0,
           "nachbarn": [
             "maker__mitte"
