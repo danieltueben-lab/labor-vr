@@ -45,6 +45,20 @@
       "name": "Vorlesungsraum",
       "mehrereStandpunkte": true,
       "standpunkte": {
+        "hinten": {
+          "name": "Hinten",
+          "x": 6.3,
+          "y": 3.75,
+          "hoehe": 1.6,
+          "nordwinkel": 0,
+          "nachbarn": [
+            "besprechung__mitte",
+            "vorlesung__mitte"
+          ],
+          "varianten": {
+            "standard": "panoramen/vorlesung__hinten__standard.jpg"
+          }
+        },
         "mitte": {
           "name": "Mitte",
           "x": 10.8,
@@ -94,7 +108,5 @@
       }
     }
   },
-  "warnungen": [
-    "Noch kein Panorama fuer vorlesung__hinten"
-  ]
+  "warnungen": []
 }

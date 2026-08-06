@@ -7,83 +7,100 @@
 <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
 <style>
   html, body { margin: 0; height: 100%; background: #1b1b1e; font-family: -apple-system, system-ui, sans-serif; }
-  #hinweis {
-    position: fixed; inset: 0; display: none; place-content: center; z-index: 20;
-    color: #eee; padding: 8vw; line-height: 1.6; font-size: 16px;
-  }
+  #hinweis { position: fixed; inset: 0; display: none; place-content: center; z-index: 20;
+             color: #eee; padding: 8vw; line-height: 1.6; font-size: 16px; }
   #hinweis code { background: #2c2c31; padding: 2px 6px; border-radius: 3px; }
-  #leiste {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
-    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-    padding: 10px 14px; background: rgba(20,20,24,.72); color: #eee; font-size: 14px;
-  }
-  #leiste button {
-    font: inherit; color: #eee; background: #3c4d56; border: 0;
-    border-radius: 4px; padding: 6px 12px; cursor: pointer;
-  }
+  #leiste { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+            display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+            padding: 10px 14px; background: rgba(20,20,24,.72); color: #eee; font-size: 14px; }
+  #leiste button { font: inherit; color: #eee; background: #3c4d56; border: 0;
+                   border-radius: 4px; padding: 6px 12px; cursor: pointer; }
   #leiste button:hover { background: #4e6e7d; }
   #titel { font-weight: 600; margin-right: auto; }
+  #eichung { position: fixed; top: 0; left: 0; right: 0; z-index: 15; display: none;
+             padding: 10px 14px; background: rgba(78,110,125,.92); color: #fff; font-size: 14px; }
+  #eichung b { font-size: 18px; }
+  #werte { position: fixed; inset: 10% 20%; z-index: 25; display: none; overflow: auto;
+           background: #16161a; color: #ddd; padding: 20px; border-radius: 8px;
+           font-family: ui-monospace, Menlo, monospace; font-size: 13px; white-space: pre; }
 </style>
 </head>
 <body>
 
 <div id="hinweis"></div>
+<div id="eichung"></div>
+<div id="werte"></div>
 
 <a-scene renderer="colorManagement: true; antialias: true"
          vr-mode-ui="enterVRButton: #vrknopf"
          loading-screen="dotsColor: #4e6e7d; backgroundColor: #1b1b1e">
 
   <a-sky id="pano" radius="500" segments-width="128" segments-height="64"></a-sky>
+  <a-entity id="marker"></a-entity>
 
   <a-entity id="rig" position="0 0 0">
     <a-camera id="kamera" position="0 1.6 0" wasd-controls-enabled="false">
       <a-text id="hud" value="" align="center" width="1.0"
               position="0 -0.62 -1.2" color="#F5F4F0" opacity="0.6"></a-text>
     </a-camera>
-    <a-entity id="controller-rechts" laser-controls="hand: right"></a-entity>
-    <a-entity id="controller-links"  laser-controls="hand: left"></a-entity>
+    <!-- cursor ist noetig, damit der Trigger ein click-Ereignis ausloest.
+         laser-controls richtet nur den Strahl ein. -->
+    <a-entity id="controller-rechts" laser-controls="hand: right"
+              raycaster="objects: .hotspot; far: 30" cursor="fuse: false; rayOrigin: entity"></a-entity>
+    <a-entity id="controller-links"  laser-controls="hand: left"
+              raycaster="objects: .hotspot; far: 30" cursor="fuse: false; rayOrigin: entity"></a-entity>
   </a-entity>
 
+  <a-entity cursor="rayOrigin: mouse" raycaster="objects: .hotspot; far: 30"></a-entity>
 </a-scene>
 
 <div id="leiste">
   <span id="titel">VR-Tour</span>
-  <button id="btn-variante">Variante wechseln (V)</button>
+  <button id="btn-variante">Variante (V)</button>
   <button id="btn-weiter">Nächster Standpunkt (N)</button>
+  <button id="btn-eichen">Eichen (K)</button>
   <button id="vrknopf">In VR ansehen</button>
 </div>
 
 <script>
 // ---------------------------------------------------------------------------
-// Zustand: flache Liste aller Standpunkte, je Standpunkt eine Liste Varianten.
-// Beim Variantenwechsel bleibt der Standpunkt und die Blickrichtung erhalten,
-// nur die Textur der Himmelskugel wird getauscht. Das ist der Kern des
-// Vergleichs: still stehen, hinschauen, umschalten.
+// Standpunkte, Varianten, Hotspots.
+//
+// Der Variantenwechsel haelt Standpunkt UND Blickrichtung fest und tauscht nur
+// die Textur. Nur so ist der Vergleich zweier Tischanordnungen aussagekraeftig.
+//
+// Hotspots zeigen in die Richtung des Nachbarstandpunkts. Die Richtung kommt aus
+// den Grundrisskoordinaten; wie diese Richtung im Panorama liegt, haengt von der
+// Kameraausrichtung beim Rendern ab und steckt im nordwinkel. Dieser Wert wird
+// nicht gerechnet, sondern im Eichmodus (K) sichtbar eingestellt.
 // ---------------------------------------------------------------------------
-const sky    = document.querySelector('#pano');
-const hud    = document.querySelector('#hud');
-const titel  = document.querySelector('#titel');
-const hinweis= document.querySelector('#hinweis');
+const sky     = document.querySelector('#pano');
+const marker  = document.querySelector('#marker');
+const hud     = document.querySelector('#hud');
+const titel   = document.querySelector('#titel');
+const hinweis = document.querySelector('#hinweis');
+const eichBox = document.querySelector('#eichung');
+const werteBox= document.querySelector('#werte');
 
-let standpunkte = [];   // [{schluessel, raumName, standpunktId, nordwinkel, varianten:[{id,url}]}]
+let liste = [];            // flache Liste aller Standpunkte mit Bild
+let nach = new Map();      // schluessel -> Standpunkt
 let iSp = 0, iVar = 0;
+let eichmodus = false;
 
-function zeigeHinweis(html) {
-  hinweis.innerHTML = html;
-  hinweis.style.display = 'grid';
-}
+const SPEICHER = 'labor-vr-nordwinkel';
+const gespeichert = JSON.parse(localStorage.getItem(SPEICHER) || '{}');
+
+function zeigeHinweis(html) { hinweis.innerHTML = html; hinweis.style.display = 'grid'; }
 
 async function laden() {
   let tour;
   try {
-    const antwort = await fetch('tour.json', { cache: 'no-store' });
-    if (!antwort.ok) throw new Error(antwort.status);
-    tour = await antwort.json();
+    const a = await fetch('tour.json', { cache: 'no-store' });
+    if (!a.ok) throw new Error(a.status);
+    tour = await a.json();
   } catch {
-    zeigeHinweis(`<h2>Noch keine Tour vorhanden</h2>
-      <p><code>tour.json</code> fehlt. Panorama nach dem Muster
-      <code>&lt;raum&gt;__&lt;standpunkt&gt;__&lt;variante&gt;.jpg</code> in
-      <code>docs/panoramen/</code> ablegen und dann
+    zeigeHinweis(`<h2>Noch keine Tour vorhanden</h2><p><code>tour.json</code> fehlt.
+      Panorama in <code>Gerenderte Bilder/</code> ablegen und
       <code>node scripts/build-manifest.mjs</code> ausführen.</p>`);
     return;
   }
@@ -92,31 +109,74 @@ async function laden() {
     for (const [spId, sp] of Object.entries(raum.standpunkte)) {
       const varianten = Object.entries(sp.varianten).map(([id, url]) => ({ id, url }));
       if (!varianten.length) continue;
-      standpunkte.push({
-        schluessel: `${raumId}__${spId}`,
+      const schluessel = `${raumId}__${spId}`;
+      const eintrag = {
+        schluessel,
         raumName: raum.name,
         standpunktName: sp.name ?? spId,
-        // Hat ein Raum nur einen Standpunkt, traegt dessen Name keine Information
-        // und wird in der Beschriftung weggelassen.
         raumHatMehrere: raum.mehrereStandpunkte === true,
-        nordwinkel: sp.nordwinkel ?? 0, varianten,
-      });
+        x: sp.x, y: sp.y,
+        nordwinkel: gespeichert[schluessel] ?? sp.nordwinkel ?? 0,
+        nachbarn: sp.nachbarn ?? [],
+        varianten,
+      };
+      liste.push(eintrag);
+      nach.set(schluessel, eintrag);
     }
   }
 
-  if (!standpunkte.length) {
-    zeigeHinweis(`<h2>Keine Panoramen gefunden</h2>
-      <p>Die Tour ist aufgebaut, enthält aber noch kein Bild. Ein JPEG in
-      <code>docs/panoramen/</code> ablegen und
-      <code>node scripts/build-manifest.mjs</code> erneut ausführen.</p>`);
+  if (!liste.length) {
+    zeigeHinweis(`<h2>Keine Panoramen gefunden</h2><p>Die Tour ist aufgebaut, enthält
+      aber noch kein Bild.</p>`);
     return;
   }
   setze(0, 0);
 }
 
+// Richtung vom Standpunkt a zum Standpunkt b, in Grad, gemessen von der
+// +y-Achse des Grundrisses im Uhrzeigersinn.
+function planwinkel(a, b) {
+  return Math.atan2(b.x - a.x, b.y - a.y) * 180 / Math.PI;
+}
+
+function baueHotspots(sp) {
+  marker.innerHTML = '';
+  for (const schluessel of sp.nachbarn) {
+    const ziel = nach.get(schluessel);
+    if (!ziel) continue;                                   // Nachbar hat noch kein Panorama
+    const gier = planwinkel(sp, ziel) + sp.nordwinkel;
+
+    const dreher = document.createElement('a-entity');
+    dreher.setAttribute('rotation', `0 ${-gier} 0`);
+
+    const gruppe = document.createElement('a-entity');
+    gruppe.setAttribute('position', '0 -1.35 -6');
+
+    const scheibe = document.createElement('a-circle');
+    scheibe.setAttribute('class', 'hotspot');
+    scheibe.setAttribute('radius', '0.62');
+    scheibe.setAttribute('rotation', '-90 0 0');
+    scheibe.setAttribute('material', 'color: #4E6E7D; opacity: 0.55; transparent: true; side: double; shader: flat');
+    scheibe.dataset.ziel = schluessel;
+
+    const beschriftung = document.createElement('a-text');
+    beschriftung.setAttribute('value', ziel.raumHatMehrere ? ziel.standpunktName : ziel.raumName);
+    beschriftung.setAttribute('align', 'center');
+    beschriftung.setAttribute('width', '4');
+    beschriftung.setAttribute('color', '#F5F4F0');
+    beschriftung.setAttribute('rotation', '-90 0 0');
+    beschriftung.setAttribute('position', '0 0.02 1.15');
+
+    gruppe.appendChild(scheibe);
+    gruppe.appendChild(beschriftung);
+    dreher.appendChild(gruppe);
+    marker.appendChild(dreher);
+  }
+}
+
 function setze(spIndex, varIndex) {
-  iSp = (spIndex + standpunkte.length) % standpunkte.length;
-  const sp = standpunkte[iSp];
+  iSp = (spIndex + liste.length) % liste.length;
+  const sp = liste[iSp];
   iVar = (varIndex + sp.varianten.length) % sp.varianten.length;
   const v = sp.varianten[iVar];
 
@@ -130,31 +190,84 @@ function setze(spIndex, varIndex) {
   titel.textContent = text;
   hud.setAttribute('value', text);
 
-  // Alle Varianten dieses Standpunkts vorladen, damit der Wechsel
-  // ohne sichtbares Nachladen erfolgt. Andere Standpunkte bewusst nicht,
-  // sonst laeuft der Grafikspeicher der Brille voll.
+  baueHotspots(sp);
+  zeichneEichung();
+
+  // Alle Varianten dieses Standpunkts vorladen, damit der Wechsel ohne
+  // Nachladen erfolgt. Andere Standpunkte bewusst nicht, sonst laeuft der
+  // Grafikspeicher der Brille voll.
   for (const andere of sp.varianten) new Image().src = andere.url;
 }
 
-const naechsteVariante = () => setze(iSp, iVar + 1);
-const naechsterStandpunkt = () => setze(iSp + 1, 0);
-const vorherigerStandpunkt = () => setze(iSp - 1, 0);
+function springe(schluessel) {
+  const i = liste.findIndex((s) => s.schluessel === schluessel);
+  if (i >= 0) setze(i, 0);
+}
+
+// --- Eichung ---------------------------------------------------------------
+function zeichneEichung() {
+  if (!eichmodus) { eichBox.style.display = 'none'; return; }
+  const sp = liste[iSp];
+  eichBox.style.display = 'block';
+  eichBox.innerHTML = `Eichmodus · ${sp.raumName} ${sp.raumHatMehrere ? '· ' + sp.standpunktName : ''} ·
+    nordwinkel <b>${sp.nordwinkel}°</b> &nbsp; Pfeil links/rechts = 1°, mit Umschalt = 10° ·
+    W zeigt alle Werte · K beendet`;
+}
+
+function verstelle(delta) {
+  const sp = liste[iSp];
+  sp.nordwinkel = ((sp.nordwinkel + delta) % 360 + 360) % 360;
+  gespeichert[sp.schluessel] = sp.nordwinkel;
+  localStorage.setItem(SPEICHER, JSON.stringify(gespeichert));
+  sky.setAttribute('rotation', `0 ${sp.nordwinkel} 0`);
+  baueHotspots(sp);
+  zeichneEichung();
+}
+
+function zeigeWerte() {
+  const sichtbar = werteBox.style.display === 'block';
+  werteBox.style.display = sichtbar ? 'none' : 'block';
+  if (sichtbar) return;
+  const zeilen = liste.map((s) => `  ${s.schluessel.padEnd(24)} "nordwinkel": ${s.nordwinkel},`);
+  werteBox.textContent =
+    'Geeichte Werte, in konfiguration/standpunkte.json eintragen:\n\n' +
+    zeilen.join('\n') + '\n\n(W schliesst dieses Fenster)';
+}
+
+// --- Bedienung -------------------------------------------------------------
+const naechsteVariante   = () => setze(iSp, iVar + 1);
+const naechsterStandpunkt= () => setze(iSp + 1, 0);
+const vorherigerStandpunkt=() => setze(iSp - 1, 0);
 
 document.querySelector('#btn-variante').onclick = naechsteVariante;
-document.querySelector('#btn-weiter').onclick  = naechsterStandpunkt;
+document.querySelector('#btn-weiter').onclick   = naechsterStandpunkt;
+document.querySelector('#btn-eichen').onclick   = () => { eichmodus = !eichmodus; zeichneEichung(); };
 
 addEventListener('keydown', (e) => {
-  if (e.key === 'v' || e.key === 'V') naechsteVariante();
-  if (e.key === 'n' || e.key === 'N') naechsterStandpunkt();
-  if (e.key === 'p' || e.key === 'P') vorherigerStandpunkt();
+  const k = e.key.toLowerCase();
+  if (k === 'v') naechsteVariante();
+  else if (k === 'n') naechsterStandpunkt();
+  else if (k === 'p') vorherigerStandpunkt();
+  else if (k === 'k') { eichmodus = !eichmodus; zeichneEichung(); }
+  else if (k === 'w' && eichmodus) zeigeWerte();
+  else if (eichmodus && e.key === 'ArrowLeft')  { verstelle(e.shiftKey ? -10 : -1); e.preventDefault(); }
+  else if (eichmodus && e.key === 'ArrowRight') { verstelle(e.shiftKey ?  10 :  1); e.preventDefault(); }
 });
 
-// Controller: Trigger schaltet den Standpunkt weiter, A/X die Variante.
+document.querySelector('a-scene').addEventListener('click', (e) => {
+  const ziel = e.target?.dataset?.ziel;
+  if (ziel) springe(ziel);
+});
+
+// In VR ist die HTML-Leiste unsichtbar, alles laeuft ueber den Controller:
+// Trigger auf einen Hotspot springt, A/X wechselt die Variante,
+// B/Y geht zum naechsten Standpunkt, falls gerade kein Hotspot im Blick ist.
 for (const id of ['#controller-rechts', '#controller-links']) {
   const c = document.querySelector(id);
-  c.addEventListener('triggerdown', naechsterStandpunkt);
   c.addEventListener('abuttondown', naechsteVariante);
   c.addEventListener('xbuttondown', naechsteVariante);
+  c.addEventListener('bbuttondown', naechsterStandpunkt);
+  c.addEventListener('ybuttondown', naechsterStandpunkt);
 }
 
 laden();
