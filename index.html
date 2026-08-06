@@ -17,18 +17,18 @@
                    border-radius: 4px; padding: 6px 12px; cursor: pointer; }
   #leiste button:hover { background: #4e6e7d; }
   #titel { font-weight: 600; margin-right: auto; }
-  #eichung { position: fixed; top: 0; left: 0; right: 0; z-index: 15; display: none;
-             padding: 10px 14px; background: rgba(78,110,125,.92); color: #fff; font-size: 14px; }
-  #eichung b { font-size: 18px; }
-  #werte { position: fixed; inset: 10% 20%; z-index: 25; display: none; overflow: auto;
+  #modus { position: fixed; top: 0; left: 0; right: 0; z-index: 15; display: none;
+           padding: 10px 14px; background: rgba(78,110,125,.94); color: #fff; font-size: 14px; }
+  #modus b { font-size: 17px; }
+  #werte { position: fixed; inset: 6% 12%; z-index: 25; display: none; overflow: auto;
            background: #16161a; color: #ddd; padding: 20px; border-radius: 8px;
-           font-family: ui-monospace, Menlo, monospace; font-size: 13px; white-space: pre; }
+           font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; white-space: pre; }
 </style>
 </head>
 <body>
 
 <div id="hinweis"></div>
-<div id="eichung"></div>
+<div id="modus"></div>
 <div id="werte"></div>
 
 <a-scene renderer="colorManagement: true; antialias: true"
@@ -58,7 +58,8 @@
   <span id="titel">VR-Tour</span>
   <button id="btn-variante">Variante (V)</button>
   <button id="btn-weiter">Nächster Standpunkt (N)</button>
-  <button id="btn-eichen">Eichen (K)</button>
+  <button id="btn-nord">Nordwinkel (K)</button>
+  <button id="btn-hotspot">Hotspots (H)</button>
   <button id="vrknopf">In VR ansehen</button>
 </div>
 
@@ -69,26 +70,33 @@
 // Der Variantenwechsel haelt Standpunkt UND Blickrichtung fest und tauscht nur
 // die Textur. Nur so ist der Vergleich zweier Tischanordnungen aussagekraeftig.
 //
-// Hotspots zeigen in die Richtung des Nachbarstandpunkts. Die Richtung kommt aus
-// den Grundrisskoordinaten; wie diese Richtung im Panorama liegt, haengt von der
-// Kameraausrichtung beim Rendern ab und steckt im nordwinkel. Dieser Wert wird
-// nicht gerechnet, sondern im Eichmodus (K) sichtbar eingestellt.
+// Hotspots liegen in der echten Bodenebene, also auf minus Augenhoehe. Winkel
+// und Abstand sind je Hotspot frei einstellbar, weil der Nachbarstandpunkt oft
+// hinter einer Wand liegt und die Markierung vor die Tuer gehoert, nicht in die
+// Wand. Voreinstellung ist die Luftlinie zum Nachbarn.
 // ---------------------------------------------------------------------------
 const sky     = document.querySelector('#pano');
 const marker  = document.querySelector('#marker');
 const hud     = document.querySelector('#hud');
 const titel   = document.querySelector('#titel');
 const hinweis = document.querySelector('#hinweis');
-const eichBox = document.querySelector('#eichung');
+const modusBox= document.querySelector('#modus');
 const werteBox= document.querySelector('#werte');
 
-let liste = [];            // flache Liste aller Standpunkte mit Bild
-let nach = new Map();      // schluessel -> Standpunkt
+let liste = [], nach = new Map();
 let iSp = 0, iVar = 0;
-let eichmodus = false;
+let modus = null;          // null | 'nord' | 'hotspot'
+let iHotspot = 0;
 
-const SPEICHER = 'labor-vr-nordwinkel';
-const gespeichert = JSON.parse(localStorage.getItem(SPEICHER) || '{}');
+const S_NORD = 'labor-vr-nordwinkel';
+const S_HOT  = 'labor-vr-hotspots';
+const gNord = JSON.parse(localStorage.getItem(S_NORD) || '{}');
+const gHot  = JSON.parse(localStorage.getItem(S_HOT)  || '{}');
+
+const speichern = () => {
+  localStorage.setItem(S_NORD, JSON.stringify(gNord));
+  localStorage.setItem(S_HOT,  JSON.stringify(gHot));
+};
 
 function zeigeHinweis(html) { hinweis.innerHTML = html; hinweis.style.display = 'grid'; }
 
@@ -99,9 +107,7 @@ async function laden() {
     if (!a.ok) throw new Error(a.status);
     tour = await a.json();
   } catch {
-    zeigeHinweis(`<h2>Noch keine Tour vorhanden</h2><p><code>tour.json</code> fehlt.
-      Panorama in <code>Gerenderte Bilder/</code> ablegen und
-      <code>node scripts/build-manifest.mjs</code> ausführen.</p>`);
+    zeigeHinweis(`<h2>Noch keine Tour vorhanden</h2><p><code>tour.json</code> fehlt.</p>`);
     return;
   }
 
@@ -115,9 +121,10 @@ async function laden() {
         raumName: raum.name,
         standpunktName: sp.name ?? spId,
         raumHatMehrere: raum.mehrereStandpunkte === true,
-        x: sp.x, y: sp.y,
-        nordwinkel: gespeichert[schluessel] ?? sp.nordwinkel ?? 0,
+        x: sp.x, y: sp.y, hoehe: sp.hoehe ?? 1.6,
+        nordwinkel: gNord[schluessel] ?? sp.nordwinkel ?? 0,
         nachbarn: sp.nachbarn ?? [],
+        hotspots: sp.hotspots ?? {},
         varianten,
       };
       liste.push(eintrag);
@@ -125,53 +132,67 @@ async function laden() {
     }
   }
 
-  if (!liste.length) {
-    zeigeHinweis(`<h2>Keine Panoramen gefunden</h2><p>Die Tour ist aufgebaut, enthält
-      aber noch kein Bild.</p>`);
-    return;
-  }
+  if (!liste.length) { zeigeHinweis('<h2>Keine Panoramen gefunden</h2>'); return; }
   setze(0, 0);
 }
 
 // Richtung vom Standpunkt a zum Standpunkt b, in Grad, gemessen von der
 // +y-Achse des Grundrisses im Uhrzeigersinn.
-function planwinkel(a, b) {
-  return Math.atan2(b.x - a.x, b.y - a.y) * 180 / Math.PI;
+const planwinkel = (a, b) => Math.atan2(b.x - a.x, b.y - a.y) * 180 / Math.PI;
+
+// Einstellung eines Hotspots holen, notfalls aus der Luftlinie erzeugen.
+function hotspotWerte(sp, zielSchluessel) {
+  const merker = (gHot[sp.schluessel] ??= {});
+  if (!merker[zielSchluessel]) {
+    const ausDatei = sp.hotspots?.[zielSchluessel];
+    merker[zielSchluessel] = ausDatei
+      ? { winkel: ausDatei.winkel, abstand: ausDatei.abstand }
+      : { winkel: ((Math.round(planwinkel(sp, nach.get(zielSchluessel))) % 360) + 360) % 360, abstand: 4 };
+  }
+  return merker[zielSchluessel];
+}
+
+function sichtbareNachbarn(sp) {
+  return sp.nachbarn.filter((s) => nach.has(s));
 }
 
 function baueHotspots(sp) {
   marker.innerHTML = '';
-  for (const schluessel of sp.nachbarn) {
+  const ziele = sichtbareNachbarn(sp);
+  ziele.forEach((schluessel, i) => {
     const ziel = nach.get(schluessel);
-    if (!ziel) continue;                                   // Nachbar hat noch kein Panorama
-    const gier = planwinkel(sp, ziel) + sp.nordwinkel;
+    const w = hotspotWerte(sp, schluessel);
+    const gewaehlt = modus === 'hotspot' && i === iHotspot;
 
     const dreher = document.createElement('a-entity');
-    dreher.setAttribute('rotation', `0 ${-gier} 0`);
+    dreher.setAttribute('rotation', `0 ${-(w.winkel + sp.nordwinkel)} 0`);
 
     const gruppe = document.createElement('a-entity');
-    gruppe.setAttribute('position', '0 -1.35 -6');
+    // Genau auf der Bodenebene: minus Augenhoehe, davor der eingestellte Abstand.
+    gruppe.setAttribute('position', `0 ${-sp.hoehe} ${-w.abstand}`);
 
     const scheibe = document.createElement('a-circle');
     scheibe.setAttribute('class', 'hotspot');
-    scheibe.setAttribute('radius', '0.62');
+    scheibe.setAttribute('radius', '0.55');
     scheibe.setAttribute('rotation', '-90 0 0');
-    scheibe.setAttribute('material', 'color: #4E6E7D; opacity: 0.55; transparent: true; side: double; shader: flat');
+    scheibe.setAttribute('material',
+      `color: ${gewaehlt ? '#D8A34E' : '#4E6E7D'}; opacity: ${gewaehlt ? 0.85 : 0.55}; ` +
+      'transparent: true; side: double; shader: flat');
     scheibe.dataset.ziel = schluessel;
 
     const beschriftung = document.createElement('a-text');
     beschriftung.setAttribute('value', ziel.raumHatMehrere ? ziel.standpunktName : ziel.raumName);
     beschriftung.setAttribute('align', 'center');
-    beschriftung.setAttribute('width', '4');
+    beschriftung.setAttribute('width', '3.4');
     beschriftung.setAttribute('color', '#F5F4F0');
     beschriftung.setAttribute('rotation', '-90 0 0');
-    beschriftung.setAttribute('position', '0 0.02 1.15');
+    beschriftung.setAttribute('position', '0 0.02 1.0');
 
     gruppe.appendChild(scheibe);
     gruppe.appendChild(beschriftung);
     dreher.appendChild(gruppe);
     marker.appendChild(dreher);
-  }
+  });
 }
 
 function setze(spIndex, varIndex) {
@@ -190,68 +211,113 @@ function setze(spIndex, varIndex) {
   titel.textContent = text;
   hud.setAttribute('value', text);
 
+  iHotspot = 0;
   baueHotspots(sp);
-  zeichneEichung();
+  zeichneModus();
 
-  // Alle Varianten dieses Standpunkts vorladen, damit der Wechsel ohne
-  // Nachladen erfolgt. Andere Standpunkte bewusst nicht, sonst laeuft der
-  // Grafikspeicher der Brille voll.
   for (const andere of sp.varianten) new Image().src = andere.url;
 }
 
 function springe(schluessel) {
+  if (modus === 'hotspot') return;          // im Bearbeitungsmodus nicht wegspringen
   const i = liste.findIndex((s) => s.schluessel === schluessel);
   if (i >= 0) setze(i, 0);
 }
 
-// --- Eichung ---------------------------------------------------------------
-function zeichneEichung() {
-  if (!eichmodus) { eichBox.style.display = 'none'; return; }
+// --- Bearbeitungsmodi ------------------------------------------------------
+function zeichneModus() {
   const sp = liste[iSp];
-  eichBox.style.display = 'block';
-  eichBox.innerHTML = `Eichmodus · ${sp.raumName} ${sp.raumHatMehrere ? '· ' + sp.standpunktName : ''} ·
-    nordwinkel <b>${sp.nordwinkel}°</b> &nbsp; Pfeil links/rechts = 1°, mit Umschalt = 10° ·
-    W zeigt alle Werte · K beendet`;
+  if (!modus) { modusBox.style.display = 'none'; return; }
+  modusBox.style.display = 'block';
+  const wo = `${sp.raumName}${sp.raumHatMehrere ? ' · ' + sp.standpunktName : ''}`;
+  if (modus === 'nord') {
+    modusBox.innerHTML = `Nordwinkel · ${wo} · <b>${sp.nordwinkel}°</b> &nbsp;
+      Pfeil links/rechts = 1°, mit Umschalt = 10° · W zeigt alle Werte · K beendet`;
+  } else {
+    const ziele = sichtbareNachbarn(sp);
+    if (!ziele.length) { modusBox.innerHTML = `Hotspots · ${wo} · keine Nachbarn mit Panorama · H beendet`; return; }
+    const s = ziele[iHotspot];
+    const w = hotspotWerte(sp, s);
+    modusBox.innerHTML = `Hotspot ${iHotspot + 1}/${ziele.length} · ${wo} &rarr;
+      <b>${nach.get(s).raumName}${nach.get(s).raumHatMehrere ? ' ' + nach.get(s).standpunktName : ''}</b> ·
+      Winkel <b>${w.winkel}°</b> · Abstand <b>${w.abstand.toFixed(2)} m</b> &nbsp;
+      Pfeile drehen und schieben, Umschalt = grob · Tab waehlt · W zeigt Werte · H beendet`;
+  }
 }
 
-function verstelle(delta) {
+function verstelleNord(d) {
   const sp = liste[iSp];
-  sp.nordwinkel = ((sp.nordwinkel + delta) % 360 + 360) % 360;
-  gespeichert[sp.schluessel] = sp.nordwinkel;
-  localStorage.setItem(SPEICHER, JSON.stringify(gespeichert));
+  sp.nordwinkel = ((sp.nordwinkel + d) % 360 + 360) % 360;
+  gNord[sp.schluessel] = sp.nordwinkel;
+  speichern();
   sky.setAttribute('rotation', `0 ${sp.nordwinkel} 0`);
   baueHotspots(sp);
-  zeichneEichung();
+  zeichneModus();
+}
+
+function verstelleHotspot(dWinkel, dAbstand) {
+  const sp = liste[iSp];
+  const ziele = sichtbareNachbarn(sp);
+  if (!ziele.length) return;
+  const w = hotspotWerte(sp, ziele[iHotspot]);
+  if (dWinkel) w.winkel = Math.round(((w.winkel + dWinkel) % 360 + 360) % 360);
+  if (dAbstand) w.abstand = Math.min(20, Math.max(1, +(w.abstand + dAbstand).toFixed(2)));
+  speichern();
+  baueHotspots(sp);
+  zeichneModus();
 }
 
 function zeigeWerte() {
-  const sichtbar = werteBox.style.display === 'block';
-  werteBox.style.display = sichtbar ? 'none' : 'block';
-  if (sichtbar) return;
-  const zeilen = liste.map((s) => `  ${s.schluessel.padEnd(24)} "nordwinkel": ${s.nordwinkel},`);
+  const offen = werteBox.style.display === 'block';
+  werteBox.style.display = offen ? 'none' : 'block';
+  if (offen) return;
+  const zeilen = liste.map((sp) => {
+    const hs = sichtbareNachbarn(sp)
+      .map((s) => `      "${s}": { "winkel": ${hotspotWerte(sp, s).winkel}, "abstand": ${hotspotWerte(sp, s).abstand} }`)
+      .join(',\n');
+    return `  ${sp.schluessel}:\n    "nordwinkel": ${sp.nordwinkel},\n    "hotspots": {\n${hs}\n    }`;
+  });
   werteBox.textContent =
-    'Geeichte Werte, in konfiguration/standpunkte.json eintragen:\n\n' +
-    zeilen.join('\n') + '\n\n(W schliesst dieses Fenster)';
+    'Werte fuer konfiguration/standpunkte.json:\n\n' + zeilen.join('\n\n') + '\n\n(W schliesst dieses Fenster)';
 }
 
 // --- Bedienung -------------------------------------------------------------
-const naechsteVariante   = () => setze(iSp, iVar + 1);
-const naechsterStandpunkt= () => setze(iSp + 1, 0);
-const vorherigerStandpunkt=() => setze(iSp - 1, 0);
+const naechsteVariante    = () => setze(iSp, iVar + 1);
+const naechsterStandpunkt = () => setze(iSp + 1, 0);
+const vorherigerStandpunkt= () => setze(iSp - 1, 0);
+const schalte = (m) => { modus = modus === m ? null : m; iHotspot = 0; baueHotspots(liste[iSp]); zeichneModus(); };
 
 document.querySelector('#btn-variante').onclick = naechsteVariante;
 document.querySelector('#btn-weiter').onclick   = naechsterStandpunkt;
-document.querySelector('#btn-eichen').onclick   = () => { eichmodus = !eichmodus; zeichneEichung(); };
+document.querySelector('#btn-nord').onclick     = () => schalte('nord');
+document.querySelector('#btn-hotspot').onclick  = () => schalte('hotspot');
 
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
-  if (k === 'v') naechsteVariante();
-  else if (k === 'n') naechsterStandpunkt();
-  else if (k === 'p') vorherigerStandpunkt();
-  else if (k === 'k') { eichmodus = !eichmodus; zeichneEichung(); }
-  else if (k === 'w' && eichmodus) zeigeWerte();
-  else if (eichmodus && e.key === 'ArrowLeft')  { verstelle(e.shiftKey ? -10 : -1); e.preventDefault(); }
-  else if (eichmodus && e.key === 'ArrowRight') { verstelle(e.shiftKey ?  10 :  1); e.preventDefault(); }
+  const grob = e.shiftKey;
+  if (k === 'v') return naechsteVariante();
+  if (k === 'n') return naechsterStandpunkt();
+  if (k === 'p') return vorherigerStandpunkt();
+  if (k === 'k') return schalte('nord');
+  if (k === 'h') return schalte('hotspot');
+  if (k === 'w' && modus) return zeigeWerte();
+  if (!modus) return;
+
+  if (e.key === 'Tab' && modus === 'hotspot') {
+    const n = sichtbareNachbarn(liste[iSp]).length;
+    if (n) { iHotspot = (iHotspot + 1) % n; baueHotspots(liste[iSp]); zeichneModus(); }
+    e.preventDefault(); return;
+  }
+  const schritt = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
+  if (schritt !== undefined) {
+    if (modus === 'nord') verstelleNord(schritt * (grob ? 10 : 1));
+    else verstelleHotspot(schritt * (grob ? 10 : 1), 0);
+    e.preventDefault(); return;
+  }
+  if (modus === 'hotspot' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    verstelleHotspot(0, (e.key === 'ArrowUp' ? 1 : -1) * (grob ? 1 : 0.25));
+    e.preventDefault();
+  }
 });
 
 document.querySelector('a-scene').addEventListener('click', (e) => {
@@ -260,8 +326,8 @@ document.querySelector('a-scene').addEventListener('click', (e) => {
 });
 
 // In VR ist die HTML-Leiste unsichtbar, alles laeuft ueber den Controller:
-// Trigger auf einen Hotspot springt, A/X wechselt die Variante,
-// B/Y geht zum naechsten Standpunkt, falls gerade kein Hotspot im Blick ist.
+// Trigger auf einen Hotspot springt, A wechselt die Variante,
+// B geht zum naechsten Standpunkt. Ein Controller genuegt.
 for (const id of ['#controller-rechts', '#controller-links']) {
   const c = document.querySelector(id);
   c.addEventListener('abuttondown', naechsteVariante);

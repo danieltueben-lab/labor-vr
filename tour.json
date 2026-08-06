@@ -15,6 +15,7 @@
             "maker__mitte",
             "vorlesung__hinten"
           ],
+          "hotspots": {},
           "varianten": {
             "standard": "panoramen/besprechung__mitte__standard.jpg"
           }
@@ -35,6 +36,7 @@
             "werkstatt__mitte",
             "besprechung__mitte"
           ],
+          "hotspots": {},
           "varianten": {
             "standard": "panoramen/maker__mitte__standard.jpg"
           }
@@ -55,6 +57,7 @@
             "besprechung__mitte",
             "vorlesung__mitte"
           ],
+          "hotspots": {},
           "varianten": {
             "standard": "panoramen/vorlesung__hinten__standard.jpg"
           }
@@ -69,6 +72,7 @@
             "vorlesung__hinten",
             "vorlesung__vorne"
           ],
+          "hotspots": {},
           "varianten": {
             "standard": "panoramen/vorlesung__mitte__standard.jpg"
           }
@@ -82,6 +86,7 @@
           "nachbarn": [
             "vorlesung__mitte"
           ],
+          "hotspots": {},
           "varianten": {
             "standard": "panoramen/vorlesung__vorne__standard.jpg"
           }
@@ -101,6 +106,7 @@
           "nachbarn": [
             "maker__mitte"
           ],
+          "hotspots": {},
           "varianten": {
             "standard": "panoramen/werkstatt__mitte__standard.jpg"
           }
