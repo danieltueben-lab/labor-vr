@@ -15,7 +15,9 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Bewusst false: bei true bricht ein neuer Lauf die laufende Pages-Auslieferung
+  # des vorherigen ab, was hier zu "Deployment cancelled" gefuehrt hat.
+  cancel-in-progress: false
 
 jobs:
   deploy:
