@@ -118,6 +118,7 @@ async function laden() {
       const schluessel = `${raumId}__${spId}`;
       const eintrag = {
         schluessel,
+        raumId,
         raumName: raum.name,
         standpunktName: sp.name ?? spId,
         raumHatMehrere: raum.mehrereStandpunkte === true,
@@ -181,7 +182,10 @@ function baueHotspots(sp) {
     scheibe.dataset.ziel = schluessel;
 
     const beschriftung = document.createElement('a-text');
-    beschriftung.setAttribute('value', ziel.raumHatMehrere ? ziel.standpunktName : ziel.raumName);
+    // Im selben Raum ist der Standpunktname die Information ("Vorne"), aus einem
+    // anderen Raum heraus der Raumname ("Vorlesungsraum").
+    beschriftung.setAttribute('value',
+      ziel.raumId === sp.raumId && ziel.raumHatMehrere ? ziel.standpunktName : ziel.raumName);
     beschriftung.setAttribute('align', 'center');
     beschriftung.setAttribute('width', '3.4');
     beschriftung.setAttribute('color', '#F5F4F0');

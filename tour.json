@@ -10,12 +10,21 @@
           "x": 2.77,
           "y": 1.86,
           "hoehe": 1.76,
-          "nordwinkel": 0,
+          "nordwinkel": 328,
           "nachbarn": [
             "maker__mitte",
             "vorlesung__hinten"
           ],
-          "hotspots": {},
+          "hotspots": {
+            "maker__mitte": {
+              "winkel": 234,
+              "abstand": 4.5
+            },
+            "vorlesung__hinten": {
+              "winkel": 78,
+              "abstand": 3.25
+            }
+          },
           "varianten": {
             "standard": "panoramen/besprechung__mitte__standard.jpg"
           }
@@ -31,12 +40,21 @@
           "x": -2.85,
           "y": 1.75,
           "hoehe": 1.76,
-          "nordwinkel": 0,
+          "nordwinkel": 315,
           "nachbarn": [
             "werkstatt__mitte",
             "besprechung__mitte"
           ],
-          "hotspots": {},
+          "hotspots": {
+            "werkstatt__mitte": {
+              "winkel": 242,
+              "abstand": 4
+            },
+            "besprechung__mitte": {
+              "winkel": 103,
+              "abstand": 4
+            }
+          },
           "varianten": {
             "standard": "panoramen/maker__mitte__standard.jpg"
           }
@@ -52,12 +70,21 @@
           "x": 6.3,
           "y": 3.75,
           "hoehe": 1.6,
-          "nordwinkel": 0,
+          "nordwinkel": 90,
           "nachbarn": [
             "besprechung__mitte",
             "vorlesung__mitte"
           ],
-          "hotspots": {},
+          "hotspots": {
+            "besprechung__mitte": {
+              "winkel": 199,
+              "abstand": 4.5
+            },
+            "vorlesung__mitte": {
+              "winkel": 152,
+              "abstand": 5
+            }
+          },
           "varianten": {
             "standard": "panoramen/vorlesung__hinten__standard.jpg"
           }
@@ -72,7 +99,16 @@
             "vorlesung__hinten",
             "vorlesung__vorne"
           ],
-          "hotspots": {},
+          "hotspots": {
+            "vorlesung__hinten": {
+              "winkel": 207,
+              "abstand": 4
+            },
+            "vorlesung__vorne": {
+              "winkel": 89,
+              "abstand": 2.5
+            }
+          },
           "varianten": {
             "standard": "panoramen/vorlesung__mitte__standard.jpg"
           }
@@ -86,7 +122,12 @@
           "nachbarn": [
             "vorlesung__mitte"
           ],
-          "hotspots": {},
+          "hotspots": {
+            "vorlesung__mitte": {
+              "winkel": 269,
+              "abstand": 2.5
+            }
+          },
           "varianten": {
             "standard": "panoramen/vorlesung__vorne__standard.jpg"
           }
@@ -102,11 +143,16 @@
           "x": -6.67,
           "y": 3.14,
           "hoehe": 1.76,
-          "nordwinkel": 0,
+          "nordwinkel": 305,
           "nachbarn": [
             "maker__mitte"
           ],
-          "hotspots": {},
+          "hotspots": {
+            "maker__mitte": {
+              "winkel": 187,
+              "abstand": 3.5
+            }
+          },
           "varianten": {
             "standard": "panoramen/werkstatt__mitte__standard.jpg"
           }
