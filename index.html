@@ -94,7 +94,11 @@ async function laden() {
       if (!varianten.length) continue;
       standpunkte.push({
         schluessel: `${raumId}__${spId}`,
-        raumName: raum.name, standpunktId: spId,
+        raumName: raum.name,
+        standpunktName: sp.name ?? spId,
+        // Hat ein Raum nur einen Standpunkt, traegt dessen Name keine Information
+        // und wird in der Beschriftung weggelassen.
+        raumHatMehrere: raum.mehrereStandpunkte === true,
         nordwinkel: sp.nordwinkel ?? 0, varianten,
       });
     }
@@ -119,9 +123,10 @@ function setze(spIndex, varIndex) {
   sky.setAttribute('material', 'src', v.url);
   sky.setAttribute('rotation', `0 ${sp.nordwinkel} 0`);
 
-  const text = sp.varianten.length > 1
-    ? `${sp.raumName} · ${sp.standpunktId} · ${v.id}  (${iVar + 1}/${sp.varianten.length})`
-    : `${sp.raumName} · ${sp.standpunktId}`;
+  const teile = [sp.raumName];
+  if (sp.raumHatMehrere) teile.push(sp.standpunktName);
+  if (sp.varianten.length > 1) teile.push(`${v.id} (${iVar + 1}/${sp.varianten.length})`);
+  const text = teile.join(' · ');
   titel.textContent = text;
   hud.setAttribute('value', text);
 

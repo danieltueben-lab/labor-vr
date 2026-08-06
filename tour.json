@@ -3,19 +3,21 @@
   "raeume": {
     "vorlesung": {
       "name": "Vorlesungsraum",
+      "mehrereStandpunkte": true,
       "standpunkte": {
-        "kamera1": {
+        "vorne": {
+          "name": "Vorne",
           "position": [
-            6.15,
+            15.2,
             1.6,
-            4.11
+            3.5
           ],
           "nordwinkel": 0,
           "nachbarn": [
-            "vorlesung__west"
+            "vorlesung__hinten"
           ],
           "varianten": {
-            "v1": "panoramen/vorlesung__kamera1__v1.jpg"
+            "v1": "panoramen/vorlesung__vorne__v1.jpg"
           }
         }
       }
@@ -25,7 +27,6 @@
     "Noch kein Panorama fuer werkstatt__mitte",
     "Noch kein Panorama fuer maker__mitte",
     "Noch kein Panorama fuer besprechung__mitte",
-    "Noch kein Panorama fuer vorlesung__west",
-    "Noch kein Panorama fuer vorlesung__ost"
+    "Noch kein Panorama fuer vorlesung__hinten"
   ]
 }
