@@ -9,7 +9,7 @@
           "name": "Mitte",
           "x": 2.77,
           "y": 1.86,
-          "hoehe": 1.76,
+          "hoehe": 1.6,
           "nordwinkel": 328,
           "nachbarn": [
             "maker__mitte",
@@ -39,7 +39,7 @@
           "name": "Mitte",
           "x": -2.85,
           "y": 1.75,
-          "hoehe": 1.76,
+          "hoehe": 1.6,
           "nordwinkel": 315,
           "nachbarn": [
             "werkstatt__mitte",
@@ -91,7 +91,7 @@
         },
         "mitte": {
           "name": "Mitte",
-          "x": 10.8,
+          "x": 10.82,
           "y": 3.75,
           "hoehe": 1.6,
           "nordwinkel": 0,
@@ -142,7 +142,7 @@
           "name": "Mitte",
           "x": -6.67,
           "y": 3.14,
-          "hoehe": 1.76,
+          "hoehe": 1.6,
           "nordwinkel": 305,
           "nachbarn": [
             "maker__mitte"
